@@ -1,0 +1,12 @@
+[package]
+name = "backend-pulse"
+version = "0.1.0"
+authors = ["Dan Glastonbury <dglastonbury@mozilla.com>"]
+description = "PulseAudio backend for cubeb-rs"
+license = "ISC"
+
+[dependencies]
+libc = "^0.2.20"
+libpulse-sys = { git = 'https://github.com/djg/libpulse-sys', branch = 'cubeb' }
+libpulse = { git = 'https://github.com/djg/libpulse', branch = 'dev' }
+cubeb-core = { path = '../cubeb-core' }

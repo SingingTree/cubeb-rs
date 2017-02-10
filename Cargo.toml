@@ -1,0 +1,29 @@
+[package]
+name = "cubeb"
+version = "0.1.0"
+authors = [ "Dan Glastonbury <dglastonbury@mozilla.com>" ]
+readme = "README.md"
+keywords = [ "audio", "cubeb" ]
+categories = [ "multimedia::audio" ]
+license = "ISC"
+
+[workspace]
+
+[features]
+default = ["use_pulse"]
+use_alsa = []
+use_audiotrack = []
+use_audiounit = []
+use_jack = []
+use_kai = []
+use_opensl = []
+use_pulse = ["backend-pulse"]
+use_sndio = []
+use_wasapi = []
+
+[dependencies]
+libc = "^0.2.20"
+
+cubeb-core = { path = 'cubeb-core' }
+
+backend-pulse = { path = 'backend-pulse', optional = true }
