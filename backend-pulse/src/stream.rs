@@ -13,7 +13,6 @@ use util::*;
 const PULSE_NO_GAIN: f32 = -1.0;
 const PA_USEC_PER_MSEC: pa_usec_t = 1000;
 const PA_USEC_PER_SEC: pa_usec_t = 1000000;
-const PA_RATE_MAX: c_uint = 48000 * 8;
 
 type CorkState = i32;
 const UNCORK: CorkState = 0x0;

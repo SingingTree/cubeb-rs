@@ -3,6 +3,10 @@ extern crate libc;
 mod context;
 mod stream;
 
+use std::ffi;
+use std::fmt;
+use std::ptr;
+
 pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub use context::Context;
@@ -187,11 +191,10 @@ pub enum Error {
 
 /// Whether a particular device is an input device (e.g. a microphone), or an
 /// output device (e.g. headphones).
-pub enum DeviceType {
-    Unknown,
-    Input,
-    Output,
-}
+pub type DeviceType = i32;
+pub const DEVICE_TYPE_UNKNOWN: DeviceType = 0b00;
+pub const DEVICE_TYPE_INPUT:   DeviceType = 0b01;
+pub const DEVICE_TYPE_OUTPUT:  DeviceType = 0b10;
 
 /// The state of a device.
 pub enum DeviceState {
@@ -254,17 +257,17 @@ pub struct DeviceInfo {
     pub devid: DeviceId,
 
     /// Device identifier which might be presented in a UI.
-    pub device_id: String,
+    pub device_id: ffi::CString,
     /// Friendly device name which might be presented in a UI.
-    pub friendly_name: String,
+    pub friendly_name: ffi::CString,
     /// Two devices have the same group identifier if they belong to the same
     /// physical device; for example a headset and microphone.
-    pub group_id: String,
+    pub group_id: Option<ffi::CString>,
     /// Optional vendor name, may be NULL.
-    pub vendor_name: Option<String>,
+    pub vendor_name: Option<ffi::CString>,
 
     /// Type of device (Input/Output).
-    pub dev_type: DeviceType,
+    pub devtype: DeviceType,
     /// State of device disabled/enabled/unplugged.
     pub state: DeviceState,
     /// Preferred device.
@@ -273,7 +276,7 @@ pub struct DeviceInfo {
     /// Sample format supported.
     pub format: DeviceFormat,
     /// The default sample format for this device.
-    pub deafult_format: DeviceFormat,
+    pub default_format: DeviceFormat,
     /// Channels.
     pub max_channels: i32,
     /// Default/Preferred sample rate.
@@ -359,4 +362,39 @@ typedef void (* cubeb_device_collection_changed_callback)(cubeb * context,
 mod tests {
     #[test]
     fn it_works() {}
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match *self {
+            Error::Unclassified => "Unclassified error.",
+            Error::InvalidFormat => "Unsupported #cubeb_stream_params requested.",
+            Error::InvalidParameter => "Invalid parameter specified.",
+            Error::NotSupported => "Optional function not implemented in current backend.",
+            Error::DeviceUnavailable => "Device specified by #cubeb_devid not available."
+        })
+    }
+}
+
+impl Default for DeviceInfo {
+    fn default() -> Self {
+        DeviceInfo {
+            devid: ptr::null_mut(),
+            device_id: Default::default(),
+            friendly_name: Default::default(),
+            group_id: Default::default(),
+            vendor_name: None,
+            devtype: DEVICE_TYPE_UNKNOWN,
+            state: DeviceState::Disabled,
+            preferred: DEVICE_PREF_NONE,
+            format: Default::default(),
+            default_format: Default::default(),
+            max_channels: Default::default(),
+            default_rate: Default::default(),
+            max_rate: Default::default(),
+            min_rate: Default::default(),
+            latency_lo: Default::default(),
+            latency_hi: Default::default(),
+        }
+    }
 }

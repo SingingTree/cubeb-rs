@@ -19,6 +19,8 @@ pub trait Context {
                        user_ptr: *mut c_void)
                    -> Result<Box<Stream + 'a>>;
 
+    fn enumerate_devices(&self, devtype: DeviceType) -> Result<Vec<DeviceInfo>>;
+
     /** Set a callback to be notified when the output device changes.
     @param stream the stream for which to set the callback.
     @param device_changed_callback a function called whenever the device has
