@@ -2,6 +2,7 @@ extern crate cubeb_core;
 extern crate libc;
 extern crate libpulse_sys;
 extern crate libpulse;
+extern crate semver;
 
 mod context;
 mod stream;

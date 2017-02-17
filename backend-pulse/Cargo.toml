@@ -9,4 +9,5 @@ license = "ISC"
 libc = "^0.2.20"
 libpulse-sys = { git = 'https://github.com/djg/libpulse-sys', branch = 'cubeb' }
 libpulse = { git = 'https://github.com/djg/libpulse', branch = 'dev' }
+semver = "^0.6.0"
 cubeb-core = { path = '../cubeb-core' }

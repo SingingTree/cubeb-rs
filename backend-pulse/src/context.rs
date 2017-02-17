@@ -5,6 +5,7 @@ use stream::PulseStream;
 use libc::{c_char,c_void};
 use libpulse;
 use libpulse_sys;
+use semver;
 use std::ffi::{CStr,CString};
 use std::default::Default;
 use util::*;
@@ -23,7 +24,9 @@ pub struct PulseContext {
     pub mainloop: libpulse::ThreadedMainloop,
     pub default_sink_info: Option<DefaultInfo>,
     pub context_name: CString,
-    pub error: bool
+    pub error: bool,
+    pub version_2_0_0: bool,
+    pub version_0_9_8: bool,
 }
 
 // For device enumeration
@@ -99,6 +102,11 @@ impl PulseContext {
                 return false;
             }
             self.mainloop.unlock();
+
+            if let Ok(version) = semver::Version::parse(&libpulse::get_library_version().to_string_lossy()) {
+                self.version_0_9_8 = version >= semver::Version::parse("0.9.8").expect("Failed to parse version");
+                self.version_2_0_0 = version >= semver::Version::parse("2.0.0").expect("Failed to parse version");
+            }
 
             self.error = false;
 
@@ -198,6 +206,31 @@ impl PulseContext {
         }
 
         true
+    }
+
+    fn to_cubeb_format(&self, format: libpulse_sys::pa_sample_format_t) -> cubeb::DeviceFormat
+    {
+        match format {
+            libpulse_sys::PA_SAMPLE_S16LE => cubeb::DEVICE_FMT_S16LE,
+            libpulse_sys::PA_SAMPLE_S16BE => cubeb::DEVICE_FMT_S16BE,
+            libpulse_sys::PA_SAMPLE_FLOAT32LE => cubeb::DEVICE_FMT_F32LE,
+            libpulse_sys::PA_SAMPLE_FLOAT32BE => cubeb::DEVICE_FMT_F32BE,
+            _ => { panic!("Invalid format"); }
+        }
+    }
+
+    fn to_cubeb_state(&self, port: *const libpulse_sys::pa_port_info) -> cubeb::DeviceState
+    {
+        if port.is_null() {
+            cubeb::DeviceState::Disabled
+        } else {
+            let port = unsafe { *port };
+            if  self.version_2_0_0 && port.available == libpulse_sys::PA_PORT_AVAILABLE_NO {
+                cubeb::DeviceState::Unplugged
+            } else {
+                cubeb::DeviceState::Enabled
+            }
+        }
     }
 }
 
@@ -313,7 +346,8 @@ impl cubeb::Context for PulseContext {
                         cubeb::DeviceState::Disabled
                     } else {
                         let port = unsafe { *$info.active_port };
-                        if cfg!(feature="pa_version_2") && port.available == libpulse_sys::PA_PORT_AVAILABLE_NO {
+
+                        if  && port.available == libpulse_sys::PA_PORT_AVAILABLE_NO {
                             cubeb::DeviceState::Unplugged
                         } else {
                             cubeb::DeviceState::Enabled
@@ -368,18 +402,7 @@ impl cubeb::Context for PulseContext {
                     }
 
                     devinfo.devtype = $devtype;
-                    devinfo.state = {
-                        if info.active_port.is_null() {
-                            cubeb::DeviceState::Disabled
-                        } else {
-                            let port = unsafe { *info.active_port };
-                            if cfg!(feature="pa_version_2") && port.available == libpulse_sys::PA_PORT_AVAILABLE_NO {
-                                cubeb::DeviceState::Unplugged
-                            } else {
-                                cubeb::DeviceState::Enabled
-                            }
-                        }
-                    };
+                    devinfo.state = list_data.context.to_cubeb_state(info.active_port);
 
                     devinfo.preferred = if devinfo.device_id == list_data.$default_name {
                         cubeb::DEVICE_PREF_ALL
@@ -388,7 +411,7 @@ impl cubeb::Context for PulseContext {
                     };
 
                     devinfo.format = cubeb::DEVICE_FMT_ALL;
-                    devinfo.default_format = to_cubeb_format(info.sample_spec.format);
+                    devinfo.default_format = list_data.context.to_cubeb_format(info.sample_spec.format);
                     devinfo.max_channels = info.channel_map.channels as i32;
                     devinfo.min_rate = 1;
                     devinfo.max_rate = PA_RATE_MAX;
@@ -406,7 +429,7 @@ impl cubeb::Context for PulseContext {
         info_cb!(sink_info_cb, libpulse::SinkInfo, cubeb::DEVICE_TYPE_OUTPUT, default_sink_name);
         info_cb!(source_info_cb, libpulse::SourceInfo, cubeb::DEVICE_TYPE_INPUT, default_source_name);
 
-        let mut device_data = PulseDevListData::new(self);
+        let device_data = PulseDevListData::new(self);
 
         {
             self.mainloop.lock();
@@ -448,15 +471,4 @@ impl<'ctx> PulseDevListData<'ctx> {
             context: ctx
         }
     }
-}
-
-fn to_cubeb_format(format: libpulse_sys::pa_sample_format_t) -> cubeb::DeviceFormat
-{
-  match format {
-    libpulse_sys::PA_SAMPLE_S16LE => cubeb::DEVICE_FMT_S16LE,
-    libpulse_sys::PA_SAMPLE_S16BE => cubeb::DEVICE_FMT_S16BE,
-    libpulse_sys::PA_SAMPLE_FLOAT32LE => cubeb::DEVICE_FMT_F32LE,
-    libpulse_sys::PA_SAMPLE_FLOAT32BE => cubeb::DEVICE_FMT_F32BE,
-    _ => { panic!("Invalid format"); }
-  }
 }
