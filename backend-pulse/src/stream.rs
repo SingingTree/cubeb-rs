@@ -753,9 +753,25 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
     }
 
     fn get_current_device(&self) -> cubeb::Result<cubeb::Device> {
-        Ok(cubeb::Device {
-            output_name: "".to_string(),
-            input_name: "".to_string(),
-        })
+
+        fn stream_device_name(stm: &libpulse::Stream) -> cubeb::Result<String> {
+            if stm.is_null() {
+                Ok(String::new())
+            } else {
+                stm.get_device_name().map_err(|_e| cubeb::Error::Unclassified)
+            }
+        }
+
+        if self.context.version_0_9_8 {
+            let input_name = try!(stream_device_name(&self.input_stream));
+            let output_name = try!(stream_device_name(&self.output_stream));
+
+            Ok(cubeb::Device {
+                input_name: input_name,
+                output_name: output_name,
+            })
+        } else {
+            Err(cubeb::Error::NotSupported)
+        }
     }
 }
