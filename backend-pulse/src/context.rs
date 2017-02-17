@@ -456,10 +456,6 @@ impl cubeb::Context for PulseContext {
 
         Ok(device_data.devinfo)
     }
-
-    fn register_device_changed_callback(&mut self, cb: &Fn()) -> cubeb::Result<()> {
-        Err(cubeb::Error::Unclassified)
-    }
 }
 
 impl<'ctx> PulseDevListData<'ctx> {

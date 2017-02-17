@@ -774,4 +774,8 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
             Err(cubeb::Error::NotSupported)
         }
     }
+
+    fn set_device_changed_callback(&mut self, _: &Fn(&mut cubeb::Stream, *mut ::libc::c_void)) -> cubeb::Result<()> {
+        Err(cubeb::Error::NotSupported)
+    }
 }

@@ -20,14 +20,4 @@ pub trait Context {
                    -> Result<Box<Stream + 'a>>;
 
     fn enumerate_devices(&self, devtype: DeviceType) -> Result<Vec<DeviceInfo>>;
-
-    /** Set a callback to be notified when the output device changes.
-    @param stream the stream for which to set the callback.
-    @param device_changed_callback a function called whenever the device has
-           changed. Passing NULL allow to unregister a function
-    @retval CUBEB_OK
-    @retval CUBEB_ERROR_INVALID_PARAMETER if either stream or
-            device_changed_callback are invalid pointers.
-    @retval CUBEB_ERROR_NOT_SUPPORTED */
-    fn register_device_changed_callback(&mut self, cb: &Fn()) -> Result<()>;
 }

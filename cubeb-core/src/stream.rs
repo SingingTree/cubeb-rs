@@ -61,4 +61,20 @@ pub trait Stream {
             invalid pointers
     @retval CUBEB_ERROR_NOT_SUPPORTED */
     fn get_current_device(&self) -> Result<Device>;
+
+    /// Set a callback to be notified when the output device changes.
+    ///
+    /// # Arguments
+    ///
+    /// * `cb` - a function called whenever the device has
+    /// changed. Passing NULL allow to unregister a function
+    ///
+    /// # Errors
+    ///
+    /// If the backend doesn't support notification of device change,
+    /// this function returns `Error::NotSupported`.
+    ///
+    /// If `cb` is an invalid pointer, this function returns
+    /// `Error::InvalidParameter`.
+    fn set_device_changed_callback(&mut self, cb: &Fn(&mut Stream, *mut ::libc::c_void)) -> Result<()>;
 }
