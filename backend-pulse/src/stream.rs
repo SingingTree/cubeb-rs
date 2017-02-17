@@ -498,7 +498,7 @@ impl<'a> PulseStream<'a> {
     }
 
     fn update_timing_info(&mut self) -> bool {
-        let self_void_ptr = to_void_ptr(self);
+        let self_void_ptr = cast_void_ptr(self);
 
         if !self.output_stream.is_null() {
             if let Ok(o) = self.output_stream.update_timing_info(success_callback, self_void_ptr) {
@@ -572,7 +572,7 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
         self.shutdown = false;
         self.cork(UNCORK | NOTIFY);
 
-        let self_void_ptr = to_void_ptr(self);
+        let self_void_ptr = cast_void_ptr(self);
         if !self.output_stream.is_null() && self.input_stream.is_null() {
             /* On output only case need to manually call user cb once in order to make
              * things roll. This is done via a defer event in order to execute it
@@ -758,9 +758,4 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
             input_name: "".to_string(),
         })
     }
-}
-
-
-fn to_void_ptr(s: &PulseStream) -> *mut c_void {
-    s as *const _ as *mut c_void
 }
