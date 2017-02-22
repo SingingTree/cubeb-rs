@@ -2,7 +2,7 @@ use cubeb_core as cubeb;
 
 use context::PulseContext;
 use libc::size_t;
-use libc::{c_char, c_int, c_uint, c_void};
+use libc::{c_char, c_uint, c_void};
 use libpulse;
 use libpulse_sys::*;
 use std::ffi::{CStr,CString};
@@ -370,7 +370,7 @@ impl<'a> PulseStream<'a> {
             if let Ok(o) = stm.cork(state & CORK,
                                     success_callback,
                                     self as *const _ as *mut c_void) {
-                self.context.operation_wait(stm, &o);
+                self.context.operation_wait_stream(stm, &o);
             }
         }
     }
@@ -502,7 +502,7 @@ impl<'a> PulseStream<'a> {
 
         if !self.output_stream.is_null() {
             if let Ok(o) = self.output_stream.update_timing_info(success_callback, self_void_ptr) {
-                if !self.context.operation_wait(&self.output_stream, &o) {
+                if !self.context.operation_wait_stream(&self.output_stream, &o) {
                     return false;
                 }
             }
@@ -510,7 +510,7 @@ impl<'a> PulseStream<'a> {
 
         if !self.input_stream.is_null() {
             if let Ok(o) = self.input_stream.update_timing_info(success_callback, self_void_ptr) {
-                if !self.context.operation_wait(&self.input_stream, &o) {
+                if !self.context.operation_wait_stream(&self.input_stream, &o) {
                     return false;
                 }
             }
@@ -637,12 +637,6 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
 
     fn set_volume(&mut self, volume: f32) -> cubeb::Result<()> {
 
-        fn volume_success(_: &libpulse::Context, success: c_int, u: *mut c_void) {
-            let ctx = cast_mut::<PulseContext>(u);
-            debug_assert!(success != 0);
-            ctx.mainloop.signal(false);
-        }
-
         if self.output_stream.is_null() {
             Err(cubeb::Error::Unclassified)
         } else {
@@ -672,12 +666,11 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
 
                 let index = self.output_stream.get_index();
 
-                let self_void_ptr = cast_void_ptr(self);
-                if let Ok(o) = self.context.context.set_sink_input_volume(index,
-                                                                          &cvol,
-                                                                          volume_success,
-                                                                          self_void_ptr) {
-                    self.context.operation_wait(&self.output_stream, &o);
+                if let Ok(o) = self.context.context.set_sink_input_volume(index, &cvol, |_, success| {
+                    debug_assert!(success != 0);
+                    self.context.mainloop.signal(false);
+                }) {
+                    self.context.operation_wait_stream(&self.output_stream, &o);
                 }
             }
 
@@ -688,35 +681,11 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
     }
 
     fn set_panning(&mut self, panning: f32) -> cubeb::Result<()> {
-
-        #[repr(C)]
-        #[derive(Copy, Clone)]
-        struct sink_input_info_result<'a> {
-            pub cvol: libpulse::CVolume,
-            pub mainloop: &'a libpulse::ThreadedMainloop,
-        }
-
-        fn sink_input_info_cb(_c: &libpulse::Context,
-                              info: &libpulse::SinkInputInfo,
-                              eol: i32,
-                              u: *mut c_void) {
-            let r = cast_mut::<sink_input_info_result>(u);
-            if eol == 0 {
-                r.cvol = info.volume;
-            }
-            r.mainloop.signal(false);
-        }
-
-        fn volume_success(_: &libpulse::Context, success: c_int, u: *mut c_void) {
-            let ctx = cast_mut::<PulseContext>(u);
-            debug_assert!(success != 0);
-            ctx.mainloop.signal(false);
-        }
-
         if self.output_stream.is_null() {
-            Err(cubeb::Error::Unclassified)
-        } else {
-            self.context.mainloop.lock();
+            return Err(cubeb::Error::Unclassified);
+        }
+
+        self.context.mainloop.lock();
 
             let map = self.output_stream.get_channel_map();
             if unsafe { pa_channel_map_can_balance(map) } == 0 {
@@ -725,31 +694,30 @@ impl<'a> cubeb::Stream for PulseStream<'a> {
 
             let index = self.output_stream.get_index();
 
-            let mut r = sink_input_info_result {
-                cvol: Default::default(),
-                mainloop: &self.context.mainloop,
-            };
+            let mut cvol: libpulse::CVolume = Default::default();
 
-            if let Ok(o) = self.context.context.get_sink_input_info(index,
-                                                                    sink_input_info_cb,
-                                                                    &mut r as *mut _ as *mut c_void)
-            {
-                self.context.operation_wait(&self.output_stream, &o);
+            if let Ok(o) = self.context.context.get_sink_input_info(index, |_,info,eol| {
+                if eol == 0 {
+                    cvol = info.volume;
+                }
+                self.context.mainloop.signal(false);
+            }) {
+                self.context.operation_wait_stream(&self.output_stream, &o);
             }
 
-            unsafe { pa_cvolume_set_balance(&mut r.cvol, map, panning); }
+            unsafe { pa_cvolume_set_balance(&mut cvol, map, panning); }
 
-            if let Ok(o) = self.context.context.set_sink_input_volume(index,
-                                                                      &r.cvol,
-                                                                      volume_success,
-                                                                      self.context as *const _ as *mut c_void) {
-                self.context.operation_wait(&self.output_stream, &o);
+            if let Ok(o) = self.context.context.set_sink_input_volume(index, &cvol, |_, success| {
+                debug_assert!(success != 0);
+                self.context.mainloop.signal(false);
+            }) {
+                self.context.operation_wait_stream(&self.output_stream, &o);
             }
 
-            self.context.mainloop.unlock();
+        self.context.mainloop.unlock();
 
-            Ok(())
-        }
+        Ok(())
+
     }
 
     fn get_current_device(&self) -> cubeb::Result<cubeb::Device> {
