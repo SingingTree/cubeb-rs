@@ -3,6 +3,7 @@ use ffi;
 use std::error;
 use std::ffi::NulError;
 use std::fmt;
+use std::os::raw::c_int;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Error {
@@ -16,7 +17,7 @@ impl Error {
         }
     }
 
-    pub unsafe fn from_raw(code: ffi::cubeb_error_code) -> Error {
+    pub unsafe fn from_raw(code: c_int) -> Error {
         let code = match code {
             ffi::CUBEB_ERROR => ErrorCode::Error,
             ffi::CUBEB_ERROR_INVALID_FORMAT => ErrorCode::InvalidFormat,
@@ -36,7 +37,7 @@ impl Error {
     }
 
 
-    pub fn raw_code(&self) -> ffi::cubeb_error_code {
+    pub fn raw_code(&self) -> c_int {
         match self.code {
             ErrorCode::Error => ffi::CUBEB_ERROR,
             ErrorCode::InvalidFormat => ffi::CUBEB_ERROR_INVALID_FORMAT,
