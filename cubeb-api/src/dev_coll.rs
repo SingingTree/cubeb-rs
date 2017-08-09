@@ -16,7 +16,7 @@ pub struct DeviceCollection<'coll, 'ctx> {
 impl<'coll, 'ctx> DeviceCollection<'coll, 'ctx> {
     fn new(ctx: &'ctx Context, devtype: DeviceType) -> Result<DeviceCollection> {
         let mut coll = ffi::cubeb_device_collection {
-            device: ptr::null(),
+            device: ptr::null_mut(),
             count: 0
         };
         let devices = unsafe {
@@ -44,7 +44,7 @@ impl<'coll, 'ctx> Deref for DeviceCollection<'coll, 'ctx> {
 impl<'coll, 'ctx> Drop for DeviceCollection<'coll, 'ctx> {
     fn drop(&mut self) {
         let mut coll = ffi::cubeb_device_collection {
-            device: self.coll.as_ptr() as *const _,
+            device: self.coll.as_ptr() as *mut _,
             count: self.coll.len()
         };
         unsafe {

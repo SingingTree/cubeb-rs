@@ -100,5 +100,5 @@ extern "C" {
     ) -> c_int;
 
     pub static g_cubeb_log_level: cubeb_log_level;
-    pub static g_cubeb_log_callback: Option<cubeb_log_callback>;
+    pub static g_cubeb_log_callback: cubeb_log_callback;
 }
