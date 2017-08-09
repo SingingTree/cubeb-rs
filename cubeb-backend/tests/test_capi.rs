@@ -47,7 +47,7 @@ impl Context for TestContext {
         _devtype: DeviceType,
     ) -> Result<ffi::cubeb_device_collection> {
         Ok(ffi::cubeb_device_collection {
-            device: 0xDEADBEEF as *const _,
+            device: 0xDEADBEEF as *mut _,
             count: usize::max_value()
         })
     }
@@ -56,7 +56,7 @@ impl Context for TestContext {
         collection: *mut ffi::cubeb_device_collection,
     ) {
         let mut coll = unsafe { &mut *collection };
-        assert_eq!(coll.device, 0xDEADBEEF as *const _);
+        assert_eq!(coll.device, 0xDEADBEEF as *mut _);
         assert_eq!(coll.count, usize::max_value());
         coll.device = ptr::null_mut();
         coll.count = 0;
@@ -189,14 +189,14 @@ fn test_ops_context_preferred_channel_layout() {
 fn test_ops_context_enumerate_devices() {
     let c: *mut ffi::cubeb = ptr::null_mut();
     let mut coll = ffi::cubeb_device_collection {
-        device: ptr::null(),
+        device: ptr::null_mut(),
         count: 0
     };
     assert_eq!(
         unsafe { OPS.enumerate_devices.unwrap()(c, 0, &mut coll) },
         ffi::CUBEB_OK
     );
-    assert_eq!(coll.device, 0xDEADBEEF as *const _);
+    assert_eq!(coll.device, 0xDEADBEEF as *mut _);
     assert_eq!(coll.count, usize::max_value())
 }
 
@@ -204,7 +204,7 @@ fn test_ops_context_enumerate_devices() {
 fn test_ops_context_device_collection_destroy() {
     let c: *mut ffi::cubeb = ptr::null_mut();
     let mut coll = ffi::cubeb_device_collection {
-        device: 0xDEADBEEF as *const _,
+        device: 0xDEADBEEF as *mut _,
         count: usize::max_value()
     };
     assert_eq!(
