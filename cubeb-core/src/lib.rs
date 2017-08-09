@@ -324,9 +324,9 @@ pub enum ErrorCode {
 /// output device (e.g. headphones).
 bitflags! {
     pub struct DeviceType: ffi::cubeb_device_type {
-        const DEVICE_TYPE_UNKNOWN = ffi::CUBEB_DEVICE_TYPE_UNKNOWN as u32;
-        const DEVICE_TYPE_INPUT = ffi::CUBEB_DEVICE_TYPE_INPUT as u32;
-        const DEVICE_TYPE_OUTPUT = ffi::CUBEB_DEVICE_TYPE_OUTPUT as u32;
+        const DEVICE_TYPE_UNKNOWN = ffi::CUBEB_DEVICE_TYPE_UNKNOWN;
+        const DEVICE_TYPE_INPUT = ffi::CUBEB_DEVICE_TYPE_INPUT;
+        const DEVICE_TYPE_OUTPUT = ffi::CUBEB_DEVICE_TYPE_OUTPUT;
     }
 }
 
@@ -426,7 +426,7 @@ impl DeviceInfo {
 
     /// Type of device (Input/Output).
     pub fn device_type(&self) -> DeviceType {
-        DeviceType::from_bits_truncate(self.raw.device_type)
+        DeviceType::from_bits_truncate(self.raw.type_)
     }
 
     /// State of device disabled/enabled/unplugged.
